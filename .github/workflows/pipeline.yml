@@ -1,0 +1,48 @@
+name: MLOps Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Register and Validate Data
+        run: python src/register_data.py
+
+      - name: Prepare and Split Data
+        run: python src/prepare_data.py
+
+      - name: Save Data Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dataset-splits
+          path: data/*.csv
+
+      - name: Train, Tune, and Evaluate
+        run: python src/train_and_evaluate.py
+
+      - name: Commit Updated Model
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add models/
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update trained model [skip ci]" && git push)
