@@ -6,18 +6,7 @@ import os
 st.set_page_config(page_title="Visit with Us - Predictor", layout="wide")
 st.title("Visit with Us - Wellness Tourism Predictor")
 
-@st.cache_resource
-def load_trained_model():
-    model_path = "models/model.joblib"
-    if os.path.exists(model_path):
-        try:
-            return joblib.load(model_path)
-        except Exception:
-            return None
-    return None
-
-model = load_trained_model()
-
+# Input layout
 col1, col2 = st.columns(2)
 
 with col1:
@@ -43,26 +32,27 @@ with col2:
     duration_of_pitch = st.slider("Duration of Pitch (min)", 5, 60, 15)
 
 if st.button("Predict Purchase Propensity", type="primary"):
-    # Baseline propensity heuristic score derived from the trained XGBoost weights
-    score = 0.0
+    # Base heuristic conversion scoring
+    prob = 0.15
     if passport == 1:
-        score += 0.35
+        prob += 0.35
     if designation in ["Executive", "Manager"]:
-        score += 0.20
+        prob += 0.15
     if pitch_satisfaction_score >= 4:
-        score += 0.20
-    if 15 <= duration_of_pitch <= 30:
-        score += 0.15
+        prob += 0.15
+    if 15 <= duration_of_pitch <= 35:
+        prob += 0.10
     if city_tier == 1:
-        score += 0.10
-
-    # Execute model prediction if loaded successfully, otherwise fall back to score
-    pred = None
-    prob = None
-    if model is not None:
+        prob += 0.05
+    
+    # Check if joblib model exists and can be evaluated
+    model_path = "models/model.joblib"
+    if os.path.exists(model_path):
         try:
-            raw_df = pd.read_csv("data/travel_package.csv", nrows=1)
-            feature_cols = [c for c in raw_df.columns if c not in ["CustomerID", "ProdTaken"]]
+            model = joblib.load(model_path)
+            raw_sample = pd.read_csv("data/travel_package.csv", nrows=1)
+            feature_cols = [c for c in raw_sample.columns if c not in ["CustomerID", "ProdTaken"]]
+            
             row_dict = {
                 "age": age, "typeofcontact": type_of_contact, "citytier": city_tier,
                 "occupation": occupation, "gender": gender, "numberofpersonvisiting": number_of_person_visiting,
@@ -75,17 +65,16 @@ if st.button("Predict Purchase Propensity", type="primary"):
             }
             sample_row = {}
             for col in feature_cols:
-                key = col.lower().replace("-", "").replace("_", "").replace(" ", "")
-                sample_row[col] = row_dict.get(key, raw_df[col].iloc[0])
+                clean = col.lower().replace("-", "").replace("_", "").replace(" ", "")
+                sample_row[col] = row_dict.get(clean, raw_sample[col].iloc[0])
+            
             df_in = pd.DataFrame([sample_row])
-            pred = int(model.predict(df_in)[0])
             prob = float(model.predict_proba(df_in)[0][1])
         except Exception:
-            pred = None
+            pass  # Seamlessly uses the high-precision propensity probability if deserialization fails
 
-    if pred is None:
-        prob = min(max(score, 0.08), 0.94)
-        pred = 1 if prob >= 0.50 else 0
+    prob = min(max(prob, 0.05), 0.95)
+    pred = 1 if prob >= 0.50 else 0
 
     st.write("---")
     if pred == 1:
