@@ -36,11 +36,13 @@ with col2:
     duration_of_pitch = st.slider("Duration of Pitch (min)", 5.0, 60.0, 15.0)
 
 if st.button("Predict Purchase Propensity", type="primary"):
-    # Load 1 row of training schema directly to guarantee exact column match
-    train_sample = pd.read_csv("data/train.csv", nrows=1).drop(columns=["ProdTaken"], errors="ignore")
-    input_df = pd.DataFrame(columns=train_sample.columns, index=[0])
+    # Read 1 row from travel_package.csv which is committed in the repo
+    raw_sample = pd.read_csv("data/travel_package.csv", nrows=1)
+    
+    # Drop non-feature columns
+    features_sample = raw_sample.drop(columns=["CustomerID", "ProdTaken"], errors="ignore")
+    input_df = pd.DataFrame(columns=features_sample.columns, index=[0])
 
-    # Mapping inputs to standard column names
     values = {
         "age": age,
         "typeofcontact": type_of_contact,
@@ -62,13 +64,12 @@ if st.button("Predict Purchase Propensity", type="primary"):
         "durationofpitch": duration_of_pitch
     }
 
-    # Match each column flexibly ignoring casing/hyphens
     for col in input_df.columns:
         clean_key = col.lower().replace("-", "").replace("_", "").replace(" ", "")
         if clean_key in values:
             input_df.at[0, col] = values[clean_key]
         else:
-            input_df.at[0, col] = train_sample.at[0, col]
+            input_df.at[0, col] = features_sample.at[0, col]
 
     pred = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0][1]
