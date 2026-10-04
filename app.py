@@ -36,32 +36,39 @@ with col2:
     duration_of_pitch = st.slider("Duration of Pitch (min)", 5.0, 60.0, 15.0)
 
 if st.button("Predict Purchase Propensity", type="primary"):
-    data_dict = {
-        "Age": [age],
-        "TypeofContact": [type_of_contact],
-        "CityTier": [city_tier],
-        "Occupation": [occupation],
-        "Gender": [gender],
-        "NumberOfPersonVisiting": [number_of_person_visiting],
-        "PreferredPropertyStar": [preferred_property_star],
-        "MaritalStatus": [marital_status],
-        "NumberOfTrips": [number_of_trips],
-        "Passport": [passport],
-        "OwnCar": [own_car],
-        "NumberOfChildrenVisiting": [number_of_children_visiting],
-        "Designation": [designation],
-        "MonthlyIncome": [monthly_income],
-        "PitchSatisfactionScore": [pitch_satisfaction_score],
-        "ProductPitched": [product_pitched],
-        "NumberOfFollowups": [number_of_followups],
-        "DurationOfPitch": [duration_of_pitch]
-    }
-    
-    input_df = pd.DataFrame(data_dict)
+    # Load 1 row of training schema directly to guarantee exact column match
+    train_sample = pd.read_csv("data/train.csv", nrows=1).drop(columns=["ProdTaken"], errors="ignore")
+    input_df = pd.DataFrame(columns=train_sample.columns, index=[0])
 
-    # Reorder columns to match the trained model's feature names exactly
-    if hasattr(model, "feature_names_in_"):
-        input_df = input_df[model.feature_names_in_]
+    # Mapping inputs to standard column names
+    values = {
+        "age": age,
+        "typeofcontact": type_of_contact,
+        "citytier": city_tier,
+        "occupation": occupation,
+        "gender": gender,
+        "numberofpersonvisiting": number_of_person_visiting,
+        "preferredpropertystar": preferred_property_star,
+        "maritalstatus": marital_status,
+        "numberoftrips": number_of_trips,
+        "passport": passport,
+        "owncar": own_car,
+        "numberofchildrenvisiting": number_of_children_visiting,
+        "designation": designation,
+        "monthlyincome": monthly_income,
+        "pitchsatisfactionscore": pitch_satisfaction_score,
+        "productpitched": product_pitched,
+        "numberoffollowups": number_of_followups,
+        "durationofpitch": duration_of_pitch
+    }
+
+    # Match each column flexibly ignoring casing/hyphens
+    for col in input_df.columns:
+        clean_key = col.lower().replace("-", "").replace("_", "").replace(" ", "")
+        if clean_key in values:
+            input_df.at[0, col] = values[clean_key]
+        else:
+            input_df.at[0, col] = train_sample.at[0, col]
 
     pred = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0][1]
