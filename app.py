@@ -20,56 +20,53 @@ with col1:
     occupation = st.selectbox("Occupation", ["Salaried", "Small Business", "Large Business", "Freelancer"])
     gender = st.selectbox("Gender", ["Male", "Female"])
     number_of_person_visiting = st.slider("Total Accompanying Persons", 1, 6, 2)
-    preferred_property_star = st.selectbox("Preferred Hotel Star", [3.0, 4.0, 5.0])
+    preferred_property_star = st.selectbox("Preferred Hotel Star", [3, 4, 5])
     marital_status = st.selectbox("Marital Status", ["Single", "Married", "Divorced"])
-    number_of_trips = st.slider("Trips per year", 1.0, 20.0, 3.0)
+    number_of_trips = st.slider("Trips per year", 1, 20, 3)
 
 with col2:
     passport = st.selectbox("Passport", [1, 0])
     own_car = st.selectbox("Own Car", [1, 0])
-    number_of_children_visiting = st.slider("Children under 5", 0.0, 4.0, 0.0)
+    number_of_children_visiting = st.slider("Children under 5", 0, 4, 0)
     designation = st.selectbox("Designation", ["Executive", "Manager", "Senior Manager", "AVP", "VP"])
     monthly_income = st.number_input("Monthly Income", value=22000.0, step=1000.0)
     pitch_satisfaction_score = st.slider("Pitch Satisfaction Score", 1, 5, 3)
     product_pitched = st.selectbox("Product Pitched", ["Basic", "Standard", "Deluxe", "Super Deluxe", "King"])
-    number_of_followups = st.slider("Number of Follow-ups", 1.0, 6.0, 3.0)
-    duration_of_pitch = st.slider("Duration of Pitch (min)", 5.0, 60.0, 15.0)
+    number_of_followups = st.slider("Number of Follow-ups", 1, 6, 3)
+    duration_of_pitch = st.slider("Duration of Pitch (min)", 5, 60, 15)
 
 if st.button("Predict Purchase Propensity", type="primary"):
-    # Read 1 row from travel_package.csv which is committed in the repo
-    raw_sample = pd.read_csv("data/travel_package.csv", nrows=1)
-    
-    # Drop non-feature columns
-    features_sample = raw_sample.drop(columns=["CustomerID", "ProdTaken"], errors="ignore")
-    input_df = pd.DataFrame(columns=features_sample.columns, index=[0])
+    # Read columns directly from the base dataset
+    raw_df = pd.read_csv("data/travel_package.csv", nrows=2)
+    feature_cols = [c for c in raw_df.columns if c not in ["CustomerID", "ProdTaken"]]
 
-    values = {
+    mapping = {
         "age": age,
-        "typeofcontact": type_of_contact,
-        "citytier": city_tier,
-        "occupation": occupation,
-        "gender": gender,
-        "numberofpersonvisiting": number_of_person_visiting,
-        "preferredpropertystar": preferred_property_star,
-        "maritalstatus": marital_status,
-        "numberoftrips": number_of_trips,
-        "passport": passport,
-        "owncar": own_car,
-        "numberofchildrenvisiting": number_of_children_visiting,
-        "designation": designation,
-        "monthlyincome": monthly_income,
-        "pitchsatisfactionscore": pitch_satisfaction_score,
-        "productpitched": product_pitched,
-        "numberoffollowups": number_of_followups,
-        "durationofpitch": duration_of_pitch
+        "typeofcontact": str(type_of_contact),
+        "citytier": int(city_tier),
+        "occupation": str(occupation),
+        "gender": str(gender),
+        "numberofpersonvisiting": int(number_of_person_visiting),
+        "preferredpropertystar": float(preferred_property_star),
+        "maritalstatus": str(marital_status),
+        "numberoftrips": float(number_of_trips),
+        "passport": int(passport),
+        "owncar": int(own_car),
+        "numberofchildrenvisiting": float(number_of_children_visiting),
+        "designation": str(designation),
+        "monthlyincome": float(monthly_income),
+        "pitchsatisfactionscore": int(pitch_satisfaction_score),
+        "productpitched": str(product_pitched),
+        "numberoffollowups": float(number_of_followups),
+        "durationofpitch": float(duration_of_pitch)
     }
 
-    for col in input_df.columns:
+    row_data = {}
+    for col in feature_cols:
         clean_key = col.lower().replace("-", "").replace("_", "").replace(" ", "")
-        if clean_key in values:
-            input_df.at[0, col] = values[clean_key]
-        else:
-            input_df.at[0, col] = features_sample.at[0, col]
+        row_data[col] = mapping.get(clean_key, raw_df[col].iloc[0])
+
+    input_df = pd.DataFrame([row_data])
 
     pred = model.predict(input_df)[0]
     prob = model.predict_proba(input_df)[0][1]
